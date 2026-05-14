@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 
 /**
  * RESILIENT FIREBASE ADMIN INITIALIZER
- * Diagnostic version: Reports the source of the key to the error handler.
+ * Heavy-duty PEM Surgeon version.
  */
 
 function initializeAdmin() {
@@ -12,45 +12,56 @@ function initializeAdmin() {
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 
     let source = "NONE";
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY_B64;
+    let rawKey = process.env.FIREBASE_PRIVATE_KEY_B64;
 
-    if (privateKey) {
+    if (rawKey) {
         try {
-            privateKey = Buffer.from(privateKey.trim(), 'base64').toString('utf8');
+            rawKey = Buffer.from(rawKey.trim(), 'base64').toString('utf8');
             source = "BASE64";
         } catch (e) {
-            console.error("Base64 decoding failed");
+            source = "BASE64_FAIL";
         }
     }
 
-    if (!privateKey || privateKey === "") {
-        privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    if (!rawKey || rawKey === "") {
+        rawKey = process.env.FIREBASE_PRIVATE_KEY;
         source = "RAW";
     }
 
-    // PEM normalization
-    if (privateKey) {
-        privateKey = privateKey.trim();
-        privateKey = privateKey.replace(/^['"]|['"]$/g, '');
-        privateKey = privateKey.replace(/\\n/g, '\n').replace(/\r/g, '');
-
-        if (!privateKey.includes("-----BEGIN PRIVATE KEY-----")) {
-            privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
-        }
+    if (!rawKey) {
+        throw new Error("No Private Key found in B64 or RAW environment variables");
     }
 
-    if (projectId && clientEmail && privateKey) {
+    // --- THE PEM SURGERY ---
+    // 1. Standardize all escaped newlines (handles \n, \\n, and literal newlines)
+    let sanitizedKey = rawKey
+        .replace(/\\n/g, '\n')
+        .replace(/\\\\n/g, '\n')
+        .replace(/\r/g, '')
+        .trim();
+
+    // 2. Remove surrounding quotes that might have been baked into the B64 or RAW string
+    sanitizedKey = sanitizedKey.replace(/^['"]|['"]$/g, '');
+
+    // 3. Ensure PEM structure is perfect
+    if (!sanitizedKey.startsWith("-----BEGIN PRIVATE KEY-----")) {
+        sanitizedKey = `-----BEGIN PRIVATE KEY-----\n${sanitizedKey}`;
+    }
+    if (!sanitizedKey.endsWith("-----END PRIVATE KEY-----")) {
+        sanitizedKey = `${sanitizedKey}\n-----END PRIVATE KEY-----`;
+    }
+
+    if (projectId && clientEmail && sanitizedKey) {
         try {
             return admin.initializeApp({
                 credential: admin.credential.cert({
                     project_id: projectId,
                     client_email: clientEmail,
-                    private_key: privateKey,
+                    private_key: sanitizedKey,
                 } as any),
             });
         } catch (err: any) {
-            // WE EMBED THE SOURCE IN THE ERROR MESSAGE
-            throw new Error(`[Source:${source}] Credential Error: ${err.message}`);
+            throw new Error(`[Src:${source}] Credential Error: ${err.message}`);
         }
     }
 
