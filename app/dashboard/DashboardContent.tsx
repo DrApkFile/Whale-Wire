@@ -131,7 +131,7 @@ export default function DashboardContent({ initialTokens, error }: DashboardCont
                     {/* One-Click Telegram Connect */}
                     {!profile?.telegramChatId ? (
                         <a
-                            href={`https://t.me/WhaleWireAlphaBot?start=${user.uid}`}
+                            href={`https://t.me/whale_wirebot?start=${user.uid}`}
                             target="_blank"
                             className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-[#229ED9]/10 border border-[#229ED9]/20 text-[#229ED9] text-xs font-bold hover:bg-[#229ED9] hover:text-white transition-all animate-pulse shadow-[0_0_20px_rgba(34,158,217,0.2)]"
                         >
@@ -176,7 +176,7 @@ export default function DashboardContent({ initialTokens, error }: DashboardCont
                             </div>
                         </div>
                         <a
-                            href={`https://t.me/WhaleWireAlphaBot?start=${user.uid}`}
+                            href={`https://t.me/whale_wirebot?start=${user.uid}`}
                             target="_blank"
                             className="px-6 py-3 bg-amber-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20 hover:bg-amber-400 transition-all uppercase"
                         >
