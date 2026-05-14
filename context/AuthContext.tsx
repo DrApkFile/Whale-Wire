@@ -16,6 +16,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // If auth isn't initialized (e.g. during build/prerender), skip naturally
+        if (!auth || typeof auth.onAuthStateChanged !== 'function' && !(auth as any).app) {
+            setLoading(false);
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
             setUser(firebaseUser);
             setLoading(false);

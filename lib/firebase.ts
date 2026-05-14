@@ -1,6 +1,6 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getAuth, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,9 +11,19 @@ const firebaseConfig = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Resilient Initialization for Prerendering
+let app: FirebaseApp | undefined;
+try {
+    if (firebaseConfig.apiKey) {
+        app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    }
+} catch (e) {
+    console.warn("Client Firebase Init postponed - likely build phase");
+}
+
+// CAUTION: We use type-casting if app is missing to satisfy TS, 
+// but we must be careful in components. Components should check for auth/db existence.
+const auth = app ? getAuth(app) : ({} as Auth);
+const db = app ? getFirestore(app) : ({} as Firestore);
 
 export { auth, db };

@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 import { NextResponse } from "next/server";
 
 /**
@@ -21,14 +21,16 @@ export async function POST(req: Request) {
                 if (userUid) {
                     console.log(`[SYNC] Connecting Telegram Chat ${chatId} to User ${userUid}`);
 
+                    const adminDb = getAdminDb();
+                    if (!adminDb) {
+                        return NextResponse.json({ ok: true });
+                    }
+
                     // Update user profile in Firestore automatically
                     await adminDb.collection("users").doc(userUid).update({
                         telegramChatId: chatId,
                         telegramConnectedAt: new Date().toISOString()
                     });
-
-                    // Optional: Send a confirmation message back via the bot
-                    // (We can use our existing sendWhaleAlert logic here)
                 }
             }
         }

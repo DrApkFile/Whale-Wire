@@ -1,6 +1,6 @@
 import { birdeye } from "@/lib/birdeye";
 import { sendWhaleAlert, formatTokenAlert } from "@/lib/telegram";
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 import { NextResponse } from "next/server";
 
 // We still keep a global signal deduplicator in memory for efficiency
@@ -25,6 +25,11 @@ export async function POST() {
         }
 
         // 3. Query all subscribers with active scanners
+        const adminDb = getAdminDb();
+        if (!adminDb) {
+            return NextResponse.json({ message: "Admin offline - Configuration missing" });
+        }
+
         const subscribersSnapshot = await adminDb.collection("users")
             .where("scannerActive", "==", true)
             .get();
