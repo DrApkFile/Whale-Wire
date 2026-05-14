@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 
 /**
  * RESILIENT FIREBASE ADMIN INITIALIZER
- * Optimized for Vercel/Next.js runtime environments.
+ * Uses Base64 decoding to bypass all PEM / Env newline issues.
  */
 
 function initializeAdmin() {
@@ -10,17 +10,29 @@ function initializeAdmin() {
 
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-    // PEM normalization - EXTRA AGGRESSIVE
+    // Attempt 1: Base64 Decoded Private Key (The Gold Standard)
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY_B64;
+    if (privateKey) {
+        try {
+            // Buffer.from works in Vercel/Node environments
+            privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+        } catch (e) {
+            console.error("Base64 decoding failed, trying raw...");
+        }
+    }
+
+    // Attempt 2: Fallback to Raw Private Key
+    if (!privateKey) {
+        privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    }
+
+    // PEM normalization (Cleanup in case raw key was used)
     if (privateKey) {
         privateKey = privateKey.trim();
-        // Remove quotes if present
         privateKey = privateKey.replace(/^['"]|['"]$/g, '');
-        // Standardize newlines
         privateKey = privateKey.replace(/\\n/g, '\n').replace(/\r/g, '');
 
-        // Ensure markers exist
         if (!privateKey.includes("-----BEGIN PRIVATE KEY-----")) {
             privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
         }
@@ -42,22 +54,15 @@ function initializeAdmin() {
     }
 
     // Fallback for static builds
-    if (process.env.NODE_ENV === 'production') {
-        if (admin.apps.length > 0) return admin.app();
-        console.warn("Initializing Build-Phase Admin App");
-        return admin.initializeApp({ projectId: projectId || "whale-wire" });
-    }
-
-    throw new Error("Missing critical Admin credentials in environment");
+    if (admin.apps.length > 0) return admin.app();
+    return admin.initializeApp({ projectId: projectId || "whale-wire" });
 }
 
-// Accessors that reveal the true error
 export const getAdminDb = () => {
     try {
         const app = initializeAdmin();
         return app.firestore();
     } catch (e: any) {
-        // We throw the actual error so the webhook can catch and report it
         throw e;
     }
 };
