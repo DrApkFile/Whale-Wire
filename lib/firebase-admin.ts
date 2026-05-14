@@ -1,70 +1,56 @@
 import * as admin from "firebase-admin";
 
 /**
- * RESILIENT FIREBASE ADMIN INITIALIZER
- * Whitespace-Shield version: Strips all hidden formatting from B64.
+ * IRONCLAD FIREBASE ADMIN INITIALIZER
+ * Uses the full Service Account JSON to bypass variable-level mangling.
  */
 
 function initializeAdmin() {
     if (admin.apps.length > 0) return admin.app();
 
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-
-    let source = "NONE";
-    let rawKey = process.env.FIREBASE_PRIVATE_KEY_B64;
-
-    if (rawKey) {
+    // 1. ATTEMPT FULL JSON PARSE (The Ironclad Method)
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (serviceAccountJson) {
         try {
-            // WHITESPACE SHIELD: Remove all spaces, newlines, and tabs from the B64 string
-            const cleanedB64 = rawKey.replace(/\s/g, '').trim();
-            rawKey = Buffer.from(cleanedB64, 'base64').toString('utf8');
-            source = "BASE64";
-        } catch (e) {
-            source = "BASE64_FAIL";
+            const cert = JSON.parse(serviceAccountJson);
+
+            // Critical fix: Ensure private_key has correct newlines if they were escaped in the JSON string
+            if (cert.private_key) {
+                cert.private_key = cert.private_key.replace(/\\n/g, '\n');
+            }
+
+            return admin.initializeApp({
+                credential: admin.credential.cert(cert),
+            });
+        } catch (e: any) {
+            console.error("JSON initialization failed:", e.message);
         }
     }
 
-    if (!rawKey || rawKey === "") {
-        rawKey = process.env.FIREBASE_PRIVATE_KEY;
-        source = "RAW";
+    // 2. FALLBACK TO INDIVIDUAL VARIABLES (Legacy / Dev)
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+    if (privateKey) {
+        privateKey = privateKey.replace(/\\n/g, '\n');
     }
 
-    if (!rawKey) {
-        throw new Error("No Private Key found in B64 or RAW environment variables");
-    }
-
-    // --- THE PEM SURGERY ---
-    let sanitizedKey = rawKey
-        .replace(/\\n/g, '\n')     // Handle literal \n text
-        .replace(/\\\\n/g, '\n')   // Handle double escaped \n
-        .replace(/\r/g, '')        // Remove carriage returns
-        .trim();
-
-    sanitizedKey = sanitizedKey.replace(/^['"]|['"]$/g, '');
-
-    if (!sanitizedKey.startsWith("-----BEGIN PRIVATE KEY-----")) {
-        sanitizedKey = `-----BEGIN PRIVATE KEY-----\n${sanitizedKey}`;
-    }
-    if (!sanitizedKey.endsWith("-----END PRIVATE KEY-----")) {
-        sanitizedKey = `${sanitizedKey}\n-----END PRIVATE KEY-----`;
-    }
-
-    if (projectId && clientEmail && sanitizedKey) {
+    if (projectId && clientEmail && privateKey) {
         try {
             return admin.initializeApp({
                 credential: admin.credential.cert({
                     project_id: projectId,
                     client_email: clientEmail,
-                    private_key: sanitizedKey,
+                    private_key: privateKey,
                 } as any),
             });
         } catch (err: any) {
-            // DEBUG: Report the character length and source for final confirmation
-            throw new Error(`[Src:${source}|Len:${sanitizedKey.length}] Credential Error: ${err.message}`);
+            throw new Error(`Ironclad Failed. Individual Init Error: ${err.message}`);
         }
     }
 
+    // 3. BUILD-PHASE PADDING
     if (admin.apps.length > 0) return admin.app();
     return admin.initializeApp({ projectId: projectId || "whale-wire" });
 }
