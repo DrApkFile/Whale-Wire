@@ -175,13 +175,25 @@ export default function DashboardContent({ initialTokens, error }: DashboardCont
                                 <p className="text-xs opacity-80">Sync your account with the WhaleWire Bot to start receiving high-velocity notifications.</p>
                             </div>
                         </div>
-                        <a
-                            href={`https://t.me/whale_wirebot?start=${user.uid}`}
-                            target="_blank"
-                            className="px-6 py-3 bg-amber-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20 hover:bg-amber-400 transition-all uppercase"
-                        >
-                            Connect in 5 Seconds
-                        </a>
+                        <div className="flex gap-2">
+                            <a
+                                href={`https://t.me/whale_wirebot?start=${user.uid}`}
+                                target="_blank"
+                                className="px-4 py-2 bg-amber-500 text-white text-[10px] font-bold rounded-lg shadow-lg shadow-amber-500/20 hover:bg-amber-400 transition-all uppercase"
+                            >
+                                Reconnect Bot
+                            </a>
+                            <button
+                                onClick={async () => {
+                                    const res = await fetch(`/api/pulse?userId=${user.uid}`);
+                                    const data = await res.json();
+                                    alert(data.testAction === "Message Sent" ? "📡 Pulse sent! Check Telegram." : `❌ Error: ${data.testAction}`);
+                                }}
+                                className="px-4 py-2 bg-blue-500 text-white text-[10px] font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:bg-blue-400 transition-all uppercase"
+                            >
+                                Test Pulse
+                            </button>
+                        </div>
                     </div>
                 )}
 
