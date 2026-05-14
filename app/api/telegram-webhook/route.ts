@@ -2,83 +2,66 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import { NextResponse } from "next/server";
 
 /**
- * TELEGRAM WEBHOOK HANDLER
+ * TELEGRAM WEBHOOK HANDLER - PRODUCTION GRADE
  * This route listens for messages from Telegram and syncs Chat IDs to WhaleWire users.
  */
 export async function POST(req: Request) {
     let body: any = null;
     try {
         body = await req.json();
-        console.log("[WEBHOOK] Received Update:", JSON.stringify(body));
 
         if (!body.message) {
-            return NextResponse.json({ ok: true, note: "No message object" });
+            return NextResponse.json({ ok: true });
         }
 
         const chatId = body.message.chat.id.toString();
         const text = body.message.text || "";
 
-        // Handle the /start [USER_UID] command
+        // Handle the /start [USER_UID] command from Dashboard deep-links
         if (text.includes("/start")) {
             const parts = text.split(" ");
             const userUid = parts.length > 1 ? parts[1] : null;
 
             if (userUid) {
-                console.log(`[SYNC] Command Detected: /start for User ${userUid} (Chat: ${chatId})`);
+                // 1. Initial greeting
+                await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: "📡 *CONNECTION ESTABLISHED*\n\nInitializing secure link to WhaleWire Terminal...",
+                        parse_mode: 'Markdown'
+                    })
+                });
 
-                // 1. GREET THE USER IMMEDIATELY (Confirmation of Bot Life)
-                try {
-                    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            chat_id: chatId,
-                            text: "📡 *OPERATIVE IDENTIFIED*\n\nSyncing your secure terminal link now... One moment.",
-                            parse_mode: 'Markdown'
-                        })
-                    });
-                } catch (msgErr) {
-                    console.error("[WEBHOOK] Failed to send greeting:", msgErr);
-                }
-
-                // 2. CONNECT TO FIRESTORE
+                // 2. Connect and Update
                 const adminDb = getAdminDb();
-                if (!adminDb) {
-                    const missing = [];
-                    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) missing.push("PROJECT_ID");
-                    if (!process.env.FIREBASE_CLIENT_EMAIL) missing.push("CLIENT_EMAIL");
-                    if (!process.env.FIREBASE_PRIVATE_KEY) missing.push("PRIVATE_KEY");
+                if (!adminDb) throw new Error("Database offline");
 
-                    throw new Error(`Admin SDK failed. Missing: ${missing.join(", ") || "Unknown Internal Error"}`);
-                }
-
-                // 3. SECURE THE PROFILE (Upsert Mode)
                 await adminDb.collection("users").doc(userUid).set({
                     telegramChatId: chatId,
                     telegramConnectedAt: new Date().toISOString(),
                     lastBotActivity: new Date().toISOString()
                 }, { merge: true });
 
-                console.log(`[SYNC] Successfully linked ${userUid} to ${chatId}`);
-
-                // 4. FINAL SUCCESS MESSAGE
+                // 3. Final Success confirmation
                 await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         chat_id: chatId,
-                        text: "✅ *SYNC SUCCESSFUL*\n\nYour WhaleWire terminal is now broadcasting to this account. You are ready to hunt.",
+                        text: "✅ *WHALEWIRE SYNCED*\n\nYour account is now linked to the global alpha stream. You will receive high-conviction alerts based on your dashboard settings.\n\n_Good luck, Operative._",
                         parse_mode: 'Markdown'
                     })
                 });
             } else {
-                // User just typed /start without a deep link code
+                // Friendly help for users who find the bot manually
                 await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         chat_id: chatId,
-                        text: "⚠️ *LINK REQUIRED*\n\nPlease click the 'Connect Telegram' button inside your WhaleWire Dashboard to link your account.",
+                        text: "⚠️ *EXTERNAL ACCESS DETECTED*\n\nTo link your account, please log in to whale-wire.vercel.app and click the **Connect Telegram** button in your Dashboard.",
                         parse_mode: 'Markdown'
                     })
                 });
@@ -87,24 +70,8 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ ok: true });
     } catch (e: any) {
-        console.error("[WEBHOOK] CRITICAL FAILURE:", e.message);
-
-        // Report the error to the user for diagnostic purposes
-        try {
-            const chatId = body?.message?.chat?.id?.toString();
-            if (chatId) {
-                await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        chat_id: chatId,
-                        text: `❌ *TERMINAL ERROR*\n\nReason: \`${e.message}\`\n\n_Please check your Vercel Environment Variables matches your .env.local perfectly._`,
-                        parse_mode: 'Markdown'
-                    })
-                });
-            }
-        } catch (repErr) { }
-
-        return NextResponse.json({ ok: false, error: e.message }, { status: 200 });
+        console.error("[WEBHOOK] Critical failure:", e.message);
+        // Silently handle errors in production to keep bot response clean
+        return NextResponse.json({ ok: true });
     }
 }
