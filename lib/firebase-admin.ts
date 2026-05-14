@@ -14,7 +14,8 @@ function initializeAdmin() {
 
     if (privateKey) {
         privateKey = privateKey.trim().replace(/^['"]|['"]$/g, '');
-        privateKey = privateKey.split('\\n').join('\n');
+        // Handle physical line breaks, escaped breaks, and carriage returns
+        privateKey = privateKey.replace(/\\n/g, '\n').replace(/\r/g, '');
     }
 
     try {
