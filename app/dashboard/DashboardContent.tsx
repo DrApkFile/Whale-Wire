@@ -59,6 +59,18 @@ export default function DashboardContent({ initialTokens, error }: DashboardCont
             router.push("/auth");
         }
     }, [user, loading, router]);
+    // 2. Global Scanner Heartbeat (Trigger every 10 mins)
+    useEffect(() => {
+        if (profile?.scannerActive) {
+            console.log("[SYSTEM] Alpha Scanner Pulse Active - 10m Interval");
+            const interval = setInterval(async () => {
+                try {
+                    await fetch('/api/scan', { method: 'POST' });
+                } catch (e) { }
+            }, 600000); // 10 Minutes
+            return () => clearInterval(interval);
+        }
+    }, [profile?.scannerActive]);
 
     // 2. Load User Profile from Firestore
     useEffect(() => {
