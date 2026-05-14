@@ -1,8 +1,8 @@
-import { birdeye } from "@/lib/birdeye";
+import { birdeye, BirdeyeToken } from "@/lib/birdeye";
 import LandingContent from "./LandingContent";
 
 export default async function Home() {
-  let trendingTokens = [];
+  let trendingTokens: BirdeyeToken[] = [];
 
   try {
     // Production Grade: Show real tokens even on the landing page for "Wow" factor

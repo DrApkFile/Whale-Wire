@@ -1,10 +1,21 @@
 import { Sidebar } from "@/components/Sidebar";
-import { birdeye } from "@/lib/birdeye";
+import { birdeye, BirdeyeToken } from "@/lib/birdeye";
 import AlertFeed from "./AlertFeed";
 
+interface Alert {
+    id: string;
+    type: string;
+    title: string;
+    description: string;
+    severity: string;
+    token: string;
+    address: string;
+    timestamp: string;
+}
+
 export default async function AlertsPage() {
-    let trendingTokens = [];
-    let initialAlerts = [];
+    let trendingTokens: BirdeyeToken[] = [];
+    let initialAlerts: Alert[] = [];
 
     try {
         // Production logic: Find tokens with high activity velocity
