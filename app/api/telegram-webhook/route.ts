@@ -44,7 +44,12 @@ export async function POST(req: Request) {
                 // 2. CONNECT TO FIRESTORE
                 const adminDb = getAdminDb();
                 if (!adminDb) {
-                    throw new Error("Firestore Admin SDK failed to initialize - check Project ID and Private Key");
+                    const missing = [];
+                    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) missing.push("PROJECT_ID");
+                    if (!process.env.FIREBASE_CLIENT_EMAIL) missing.push("CLIENT_EMAIL");
+                    if (!process.env.FIREBASE_PRIVATE_KEY) missing.push("PRIVATE_KEY");
+
+                    throw new Error(`Admin SDK failed. Missing: ${missing.join(", ") || "Unknown Internal Error"}`);
                 }
 
                 // 3. SECURE THE PROFILE
