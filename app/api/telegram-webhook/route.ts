@@ -31,6 +31,17 @@ export async function POST(req: Request) {
                         telegramChatId: chatId,
                         telegramConnectedAt: new Date().toISOString()
                     });
+
+                    // Send a confirmation message back via the bot
+                    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: chatId,
+                            text: "📡 *WHALEWIRE SYNC SUCCESSFUL*\n\nYour account is now linked. You will receive real-time alpha alerts directly in this chat.\n\n_Happy Hunting, Operative._",
+                            parse_mode: 'Markdown'
+                        })
+                    });
                 }
             }
         }
