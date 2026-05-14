@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 
 /**
  * RESILIENT FIREBASE ADMIN INITIALIZER
- * Heavy-duty PEM Surgeon version.
+ * Whitespace-Shield version: Strips all hidden formatting from B64.
  */
 
 function initializeAdmin() {
@@ -16,7 +16,9 @@ function initializeAdmin() {
 
     if (rawKey) {
         try {
-            rawKey = Buffer.from(rawKey.trim(), 'base64').toString('utf8');
+            // WHITESPACE SHIELD: Remove all spaces, newlines, and tabs from the B64 string
+            const cleanedB64 = rawKey.replace(/\s/g, '').trim();
+            rawKey = Buffer.from(cleanedB64, 'base64').toString('utf8');
             source = "BASE64";
         } catch (e) {
             source = "BASE64_FAIL";
@@ -33,17 +35,14 @@ function initializeAdmin() {
     }
 
     // --- THE PEM SURGERY ---
-    // 1. Standardize all escaped newlines (handles \n, \\n, and literal newlines)
     let sanitizedKey = rawKey
-        .replace(/\\n/g, '\n')
-        .replace(/\\\\n/g, '\n')
-        .replace(/\r/g, '')
+        .replace(/\\n/g, '\n')     // Handle literal \n text
+        .replace(/\\\\n/g, '\n')   // Handle double escaped \n
+        .replace(/\r/g, '')        // Remove carriage returns
         .trim();
 
-    // 2. Remove surrounding quotes that might have been baked into the B64 or RAW string
     sanitizedKey = sanitizedKey.replace(/^['"]|['"]$/g, '');
 
-    // 3. Ensure PEM structure is perfect
     if (!sanitizedKey.startsWith("-----BEGIN PRIVATE KEY-----")) {
         sanitizedKey = `-----BEGIN PRIVATE KEY-----\n${sanitizedKey}`;
     }
@@ -61,7 +60,8 @@ function initializeAdmin() {
                 } as any),
             });
         } catch (err: any) {
-            throw new Error(`[Src:${source}] Credential Error: ${err.message}`);
+            // DEBUG: Report the character length and source for final confirmation
+            throw new Error(`[Src:${source}|Len:${sanitizedKey.length}] Credential Error: ${err.message}`);
         }
     }
 
