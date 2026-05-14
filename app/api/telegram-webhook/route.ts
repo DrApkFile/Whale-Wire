@@ -52,12 +52,12 @@ export async function POST(req: Request) {
                     throw new Error(`Admin SDK failed. Missing: ${missing.join(", ") || "Unknown Internal Error"}`);
                 }
 
-                // 3. SECURE THE PROFILE
-                await adminDb.collection("users").doc(userUid).update({
+                // 3. SECURE THE PROFILE (Upsert Mode)
+                await adminDb.collection("users").doc(userUid).set({
                     telegramChatId: chatId,
                     telegramConnectedAt: new Date().toISOString(),
                     lastBotActivity: new Date().toISOString()
-                });
+                }, { merge: true });
 
                 console.log(`[SYNC] Successfully linked ${userUid} to ${chatId}`);
 
