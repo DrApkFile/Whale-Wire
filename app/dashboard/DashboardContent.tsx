@@ -139,9 +139,22 @@ export default function DashboardContent({ initialTokens, error }: DashboardCont
                             CONNECT TELEGRAM
                         </a>
                     ) : (
-                        <div className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold shadow-[0_0_20px_rgba(16,185,129,0.1)]">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            BOT LINKED
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                BOT LINKED
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    const res = await fetch(`/api/pulse?userId=${user.uid}`);
+                                    const data = await res.json();
+                                    alert(data.testAction === "Message Sent" ? "📡 Pulse sent! Check Telegram." : `❌ Error: ${data.testAction}`);
+                                }}
+                                className="p-2.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-500 hover:text-white transition-all shadow-lg shadow-blue-500/10"
+                                title="Send Test Alert"
+                            >
+                                <Zap size={16} />
+                            </button>
                         </div>
                     )}
 
