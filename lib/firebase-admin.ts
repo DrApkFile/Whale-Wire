@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 
 /**
  * RESILIENT FIREBASE ADMIN INITIALIZER
- * Uses Base64 decoding to bypass all PEM / Env newline issues.
+ * Diagnostic version: Reports the source of the key to the error handler.
  */
 
 function initializeAdmin() {
@@ -11,23 +11,24 @@ function initializeAdmin() {
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 
-    // Attempt 1: Base64 Decoded Private Key (The Gold Standard)
+    let source = "NONE";
     let privateKey = process.env.FIREBASE_PRIVATE_KEY_B64;
+
     if (privateKey) {
         try {
-            // Buffer.from works in Vercel/Node environments
-            privateKey = Buffer.from(privateKey, 'base64').toString('utf8');
+            privateKey = Buffer.from(privateKey.trim(), 'base64').toString('utf8');
+            source = "BASE64";
         } catch (e) {
-            console.error("Base64 decoding failed, trying raw...");
+            console.error("Base64 decoding failed");
         }
     }
 
-    // Attempt 2: Fallback to Raw Private Key
-    if (!privateKey) {
+    if (!privateKey || privateKey === "") {
         privateKey = process.env.FIREBASE_PRIVATE_KEY;
+        source = "RAW";
     }
 
-    // PEM normalization (Cleanup in case raw key was used)
+    // PEM normalization
     if (privateKey) {
         privateKey = privateKey.trim();
         privateKey = privateKey.replace(/^['"]|['"]$/g, '');
@@ -48,12 +49,11 @@ function initializeAdmin() {
                 } as any),
             });
         } catch (err: any) {
-            console.error("Critical Admin cert error:", err.message);
-            throw new Error(`Credential Error: ${err.message}`);
+            // WE EMBED THE SOURCE IN THE ERROR MESSAGE
+            throw new Error(`[Source:${source}] Credential Error: ${err.message}`);
         }
     }
 
-    // Fallback for static builds
     if (admin.apps.length > 0) return admin.app();
     return admin.initializeApp({ projectId: projectId || "whale-wire" });
 }
