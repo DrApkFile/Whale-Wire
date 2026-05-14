@@ -1,5 +1,5 @@
 import { Sidebar } from "@/components/Sidebar";
-import { birdeye } from "@/lib/birdeye";
+import { birdeye, BirdeyeToken } from "@/lib/birdeye";
 import Link from "next/link";
 import { Search, Coins, ArrowUpRight, SearchSlash } from "lucide-react";
 
@@ -9,7 +9,7 @@ export default async function TokensPage({
     searchParams: Promise<{ q?: string }>
 }) {
     const { q } = await searchParams;
-    let tokens: any[] = [];
+    let tokens: BirdeyeToken[] = [];
     let isSearch = !!q;
 
     try {

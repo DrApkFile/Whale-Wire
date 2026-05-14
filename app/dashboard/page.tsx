@@ -5,7 +5,7 @@ import DashboardContent from "./DashboardContent";
 export default async function DashboardPage() {
     // Production Grade: Fetch real data server-side
     let trendingTokens: BirdeyeToken[] = [];
-    let error = null;
+    let error: string | null = null;
 
     try {
         trendingTokens = await birdeye.getTrendingTokens(15);

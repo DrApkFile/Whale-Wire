@@ -7,8 +7,8 @@ export default async function TokenPage({ params }: { params: Promise<{ id: stri
     const { id } = await params;
 
     let tokenData: any = null;
-    let securityData = null;
-    let error = null;
+    let securityData: any = null;
+    let error: string | null = null;
 
     try {
         // Multi-endpoint fetch to maximize data recovery on restricted API keys

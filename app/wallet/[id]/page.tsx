@@ -1,13 +1,13 @@
 import { Sidebar } from "@/components/Sidebar";
-import { birdeye } from "@/lib/birdeye";
+import { birdeye, BirdeyeWalletActivity } from "@/lib/birdeye";
 import { calculateWalletScore } from "@/lib/scoring";
 import WalletContent from "./WalletContent";
 
 export default async function WalletPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
 
-    let activity = [];
-    let error = null;
+    let activity: BirdeyeWalletActivity[] = [];
+    let error: string | null = null;
 
     try {
         activity = await birdeye.getWalletActivity(id);
