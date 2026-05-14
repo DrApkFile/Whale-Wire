@@ -12,14 +12,22 @@ function initializeAdmin() {
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
     let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-    // PEM normalization
+    // PEM normalization - EXTRA AGGRESSIVE
     if (privateKey) {
-        privateKey = privateKey.trim().replace(/^['"]|['"]$/g, '');
+        privateKey = privateKey.trim();
+        // Remove quotes if present
+        privateKey = privateKey.replace(/^['"]|['"]$/g, '');
+        // Standardize newlines
         privateKey = privateKey.replace(/\\n/g, '\n').replace(/\r/g, '');
+
+        // Ensure markers exist
+        if (!privateKey.includes("-----BEGIN PRIVATE KEY-----")) {
+            privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
+        }
     }
 
-    try {
-        if (projectId && clientEmail && privateKey) {
+    if (projectId && clientEmail && privateKey) {
+        try {
             return admin.initializeApp({
                 credential: admin.credential.cert({
                     project_id: projectId,
@@ -27,26 +35,30 @@ function initializeAdmin() {
                     private_key: privateKey,
                 } as any),
             });
+        } catch (err: any) {
+            console.error("Critical Admin cert error:", err.message);
+            throw new Error(`Credential Error: ${err.message}`);
         }
-
-        // Build-time / Missing Config placeholder 
-        // We use the actual projectId if available to prevent misrouting
-        return admin.initializeApp({
-            projectId: projectId || "whale-wire",
-        });
-    } catch (err: any) {
-        console.error("Admin Init Error:", err.message);
-        if (admin.apps.length > 0) return admin.app();
-        throw err;
     }
+
+    // Fallback for static builds
+    if (process.env.NODE_ENV === 'production') {
+        if (admin.apps.length > 0) return admin.app();
+        console.warn("Initializing Build-Phase Admin App");
+        return admin.initializeApp({ projectId: projectId || "whale-wire" });
+    }
+
+    throw new Error("Missing critical Admin credentials in environment");
 }
 
+// Accessors that reveal the true error
 export const getAdminDb = () => {
     try {
         const app = initializeAdmin();
         return app.firestore();
-    } catch (e) {
-        return null;
+    } catch (e: any) {
+        // We throw the actual error so the webhook can catch and report it
+        throw e;
     }
 };
 
@@ -54,7 +66,7 @@ export const getAdminAuth = () => {
     try {
         const app = initializeAdmin();
         return app.auth();
-    } catch (e) {
-        return null;
+    } catch (e: any) {
+        throw e;
     }
 };
