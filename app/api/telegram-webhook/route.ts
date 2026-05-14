@@ -6,8 +6,9 @@ import { NextResponse } from "next/server";
  * This route listens for messages from Telegram and syncs Chat IDs to WhaleWire users.
  */
 export async function POST(req: Request) {
+    let body: any = null;
     try {
-        const body = await req.json();
+        body = await req.json();
         console.log("[WEBHOOK] Received Update:", JSON.stringify(body));
 
         if (!body.message) {
@@ -63,7 +64,6 @@ export async function POST(req: Request) {
                         chat_id: chatId,
                         text: "✅ *SYNC SUCCESSFUL*\n\nYour WhaleWire terminal is now broadcasting to this account. You are ready to hunt.",
                         parse_mode: 'Markdown'
-                        // No reply_markup needed, just a clean confirmation
                     })
                 });
             } else {
@@ -83,8 +83,23 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
     } catch (e: any) {
         console.error("[WEBHOOK] CRITICAL FAILURE:", e.message);
-        // We return 200 even on error to stop Telegram from retrying 500s indefinitely
-        // while we debug, but we log the 500 locally.
+
+        // Report the error to the user for diagnostic purposes
+        try {
+            const chatId = body?.message?.chat?.id?.toString();
+            if (chatId) {
+                await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: `❌ *TERMINAL ERROR*\n\nReason: \`${e.message}\`\n\n_Please check your Vercel Environment Variables matches your .env.local perfectly._`,
+                        parse_mode: 'Markdown'
+                    })
+                });
+            }
+        } catch (repErr) { }
+
         return NextResponse.json({ ok: false, error: e.message }, { status: 200 });
     }
 }

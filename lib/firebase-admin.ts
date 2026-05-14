@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 
 /**
  * RESILIENT FIREBASE ADMIN INITIALIZER
- * Provides lazy-loaded access to admin services to prevent build-time crashes.
+ * Optimized for Vercel/Next.js runtime environments.
  */
 
 function initializeAdmin() {
@@ -12,9 +12,9 @@ function initializeAdmin() {
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
     let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
+    // PEM normalization
     if (privateKey) {
         privateKey = privateKey.trim().replace(/^['"]|['"]$/g, '');
-        // Handle physical line breaks, escaped breaks, and carriage returns
         privateKey = privateKey.replace(/\\n/g, '\n').replace(/\r/g, '');
     }
 
@@ -29,25 +29,23 @@ function initializeAdmin() {
             });
         }
 
-        // Build-time placeholder
+        // Build-time / Missing Config placeholder 
+        // We use the actual projectId if available to prevent misrouting
         return admin.initializeApp({
-            projectId: projectId || "build-placeholder",
+            projectId: projectId || "whale-wire",
         });
     } catch (err: any) {
+        console.error("Admin Init Error:", err.message);
         if (admin.apps.length > 0) return admin.app();
-
-        // Ultimate fallback for strict collectors
-        return admin.initializeApp({ projectId: "emergency-fallback" });
+        throw err;
     }
 }
 
-// Use Dynamic Accessors (Getters) for maximum build safety
 export const getAdminDb = () => {
     try {
         const app = initializeAdmin();
         return app.firestore();
     } catch (e) {
-        console.error("Critical: AdminDB Access Failure");
         return null;
     }
 };
@@ -57,7 +55,6 @@ export const getAdminAuth = () => {
         const app = initializeAdmin();
         return app.auth();
     } catch (e) {
-        console.error("Critical: AdminAuth Access Failure");
         return null;
     }
 };
