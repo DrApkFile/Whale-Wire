@@ -18,8 +18,8 @@ export async function GET(req: Request) {
         const adminDb = getAdminDb();
         if (!adminDb) return NextResponse.json({ error: "Database Connection Failed" }, { status: 500 });
 
-        // 2. Fetch Market Data
-        const tokens = await birdeye.getTrendingTokens(20);
+        // 2. Fetch Market Data (Quietly for logs)
+        const tokens = await birdeye.getTrendingTokens(20).catch(() => []);
         const highVolume = tokens.filter(t => t.v24hUSD > 1000000);
 
         // 3. Find Subscribers
@@ -29,19 +29,21 @@ export async function GET(req: Request) {
 
         const subCount = subscribersSnapshot.size;
 
-        // 4. If a test ID is provided, force an alert to THAT user only
+        // 4. Force a Test Message (Bypassing market filters)
         let testResult = "N/A";
-        if (testUserId && highVolume.length > 0) {
+        if (testUserId) {
             const userDoc = await adminDb.collection("users").doc(testUserId).get();
             const userData = userDoc.data();
 
             if (userData?.telegramChatId) {
-                const testMsg = "📡 *PULSE CHECK SUCCESSFUL*\n\nYour WhaleWire scanner is operational and talking to the database. You are officially in the Alpha Stream.";
+                const testMsg = "📡 *WHALEWIRE PULSE CHECK*\n\nYour terminal is online and the connection is healthy. Alpha notifications are active.";
                 const sent = await sendWhaleAlert(testMsg, userData.telegramChatId);
                 testResult = sent ? "Message Sent" : "Message Failed (Check Bot Token)";
             } else {
-                testResult = "User found but no Telegram linked";
+                testResult = "User profile found but Telegram is not linked in DB";
             }
+        } else {
+            testResult = "No userId provided in request";
         }
 
         return NextResponse.json({
@@ -49,8 +51,7 @@ export async function GET(req: Request) {
             tokensFound: tokens.length,
             highVolumeCount: highVolume.length,
             activeSubscribers: subCount,
-            testAction: testResult,
-            sampleToken: highVolume[0]?.symbol || "None above $1M volume"
+            testAction: testResult
         });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
